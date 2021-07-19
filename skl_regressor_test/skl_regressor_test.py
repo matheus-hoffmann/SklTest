@@ -12,6 +12,7 @@ from sklearn.model_selection import train_test_split, RepeatedKFold, GridSearchC
 from skl_regressor_test.utils import *
 
 
+# The keys are the method name according to Scikit-Learn documentation
 _MODELS = {"SVR": sklearn.svm.SVR(),
            "BaggingRegressor": sklearn.ensemble.BaggingRegressor(),
            "NuSVR": sklearn.svm.NuSVR(),
@@ -171,12 +172,81 @@ _SPACES = {"SVR": {'kernel': ['linear', 'rbf', 'sigmoid'],
 
 
 class SklRegressorTest:
+    """
+    A class used to represent test several Scikit-Learn regression models
+
+    ...
+
+    Attributes
+    ----------
+    m_input : np
+        Data input matrix [n x m]
+    m_output : np
+        Data output array [n x 1]
+    m_train_percentage : float
+        Percentage of data to train the model
+    m_models : dict
+        Machine learning models to be analyzed
+    m_spaces : dict
+        Possible hyperparameters values to each model
+    m_best_model : dict
+        Best machine learning model after boosting, with already settled the best hyperparameters
+    m_best_params : dict
+        Best combination of hyperparameters for each model
+    m_r2_score : dict
+        R2 score achieved by the model after boosting
+    m_max_absolute_error : dict
+        Minimum maximum absolute error achieved by the model after boosting
+    m_max_error : dict
+        Maximum error achieved by the model after boosting
+    m_mean_absolute_error : dict
+        Mean absolute error achieved by the model after boosting
+    m_mean_squared_error : dict
+        Maximum absolute error achieved by the model after boosting
+    m_random_state : dict
+        Best random state to split the train and test data
+
+    Methods
+    -------
+    set_desired_models(models:str="all") -> None
+        Set the Scikit-Learn model to be analyzed or all of the available models
+    initialize_parameters() -> None
+        Initialize attributes with the default values
+    test_random_states(n_random_states:int=10) -> None
+        Analyze the best random state to split the data and train with the default hyperparameters
+    test_spaces(n_random_states:int=10, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10) -> None
+        Boost hyperparameters through a k-fold cross-validation holdout
+    test_all(n_random_states:int=10, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10) -> None
+        Analyze the best performance between  test_random_states and test_spaces methods at once
+    write_log(self, path:str="", filename:str="skl_regressor_test_summary") -> pd
+        Save a summary file with the best hyperparameters configuration and statistical data from the models
+    """
+
     def __init__(self, m_input:np=None, m_output:np=None, m_train_percentage:float=0.8):
+        """
+        Parameters
+        ----------
+        m_input : np
+            Data input matrix [n x m]
+        m_output : np
+            Data output array [n x 1]
+        m_train_percentage : float
+            Percentage of data to train the model
+        """
         self.m_input = m_input
         self.m_output = m_output
         self.m_train_percentage = m_train_percentage
 
     def set_desired_models(self, models:str="all") -> None:
+        """
+        Set the Scikit-Learn model to be analyzed or all of the available models
+
+        Parameters
+        ----------
+        models : str
+            Models to be evaluated. Pass the name of the Scikit-Learn implementation or "all" if you desire to run all
+            implemented methdos
+        """
         if models == "all":
             self.m_models = _MODELS
             self.m_spaces = _SPACES
@@ -186,9 +256,12 @@ class SklRegressorTest:
                 self.m_spaces = {models: _SPACES[models]}
             except:
                 exit("Unexpected model: must be Scikit-Learn regression model name or all.")
-        self.set_dependent_parameters()
+        self.initialize_parameters()
 
-    def set_dependent_parameters(self) -> None:
+    def initialize_parameters(self) -> None:
+        """
+        Initialize attributes with the default value
+        """
         self.m_best_model = self.m_models.copy()
         self.m_best_params = self.m_models.copy()
         self.m_r2_score = self.m_models.copy()
@@ -207,6 +280,14 @@ class SklRegressorTest:
             self.m_random_state[key] = 1e10
 
     def test_random_states(self, n_random_states:int=10) -> None:
+        """
+        Analyze the best random state to split the data and train with the default hyperparameters
+
+        Parameters
+        ----------
+        n_random_states : int
+            Number of random states to evaluate the dafault model
+        """
         random_state_interval = [int(i) for i in range(1, n_random_states+1, 1)]
 
         print("Testing random states")
@@ -231,6 +312,20 @@ class SklRegressorTest:
         print("Random state default analysis finished")
 
     def test_spaces(self, n_random_states:int=10, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10) -> None:
+        """
+        Boost hyperparameters through a k-fold cross-validation holdout
+
+        Parameters
+        ----------
+        n_random_states : int
+            Number of random states to evaluate the dafault model
+        rkf_cv_n_splits : int
+            Number of splits of cross-validation
+        rkf_cv_n_repeats : int
+            Number of repeats of cross-validation
+        n_rand_iter : int
+            Number of samples of the grid of possible hyperparameters combinations
+        """
         random_state_interval = [int(i) for i in range(1, n_random_states + 1, 1)]
 
         print("Testing spaces")
@@ -269,24 +364,43 @@ class SklRegressorTest:
 
         print("Random state default analysis finished")
 
-    def test_all(self, method:str="all", n_random_states:int=10, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10) -> None:
-        if method == "all":
-            self.test_random_states(n_random_states=n_random_states)
-            self.test_spaces(n_random_states=n_random_states,
-                             rkf_cv_n_splits=rkf_cv_n_splits,
-                             rkf_cv_n_repeats=rkf_cv_n_repeats,
-                             n_rand_iter=n_rand_iter)
-        elif method == "random_states":
-            self.test_random_states(n_random_states=n_random_states)
-        elif method == "spaces":
-            self.test_spaces(n_random_states=n_random_states,
-                             rkf_cv_n_splits=rkf_cv_n_splits,
-                             rkf_cv_n_repeats=rkf_cv_n_repeats,
-                             n_rand_iter=n_rand_iter)
-        else:
-            exit("Error: Unexpected method. Must be: \"all\", \"random_states\" or \"spaces\"")
+    def test_all(self, n_random_states:int=10, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10) -> None:
+        """
+        Analyze the best performance between  test_random_states and test_spaces methods at once
 
-    def write_log(self, path:str="", filename:str="skl_regressor_test_summary") -> None:
+        Parameters
+        ----------
+        n_random_states : int
+            Number of random states to evaluate the dafault model
+        rkf_cv_n_splits : int
+            Number of splits of cross-validation
+        rkf_cv_n_repeats : int
+            Number of repeats of cross-validation
+        n_rand_iter : int
+            Number of samples of the grid of possible hyperparameters combinations
+        """
+        self.test_random_states(n_random_states=n_random_states)
+        self.test_spaces(n_random_states=n_random_states,
+                         rkf_cv_n_splits=rkf_cv_n_splits,
+                         rkf_cv_n_repeats=rkf_cv_n_repeats,
+                         n_rand_iter=n_rand_iter)
+
+    def write_log(self, path:str="", filename:str="skl_regressor_test_summary") -> pd:
+        """
+        Analyze the best random state to split the data and train with the default hyperparameters
+
+        Parameters
+        ----------
+        path : str
+            Path to the file. It is assumed that it will be saved in the current directory.
+        filename: str
+            Name of the summary file
+        
+        Return
+        ------
+        df : pd
+            Summary dataframe
+        """
         df = pd.DataFrame()
         df["Model"] = self.m_models.keys()
         df["Random State"] = np.array(list(self.m_random_state.values()))
@@ -298,5 +412,8 @@ class SklRegressorTest:
         df["Mean Squared Error"] = np.array(list(self.m_mean_squared_error.values()))
 
         df = df.sort_values(by="Model")
-        df.to_excel(path+filename+".xlsx", index=False)
-        print(df.head())
+        if path == "" or path[-1] == "/":
+            df.to_excel(path+filename+".xlsx", index=False)
+        else:
+            df.to_excel(path + "/" + filename + ".xlsx", index=False)
+        return df
