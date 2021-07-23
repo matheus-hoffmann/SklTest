@@ -1,3 +1,4 @@
+from typing import Union
 import pandas as pd
 import numpy as np
 import sklearn
@@ -220,6 +221,15 @@ class SklRegressorTest:
         Analyze the best performance between  test_random_states and test_spaces methods at once
     write_log(self, path:str="", filename:str="skl_regressor_test_summary") -> pd
         Save a summary file with the best hyperparameters configuration and statistical data from the models
+    test_random_states_until(maxerror:float=1.0, n_iter:int=1e4) -> None
+        Resample the train/test and train the model with default configuration until achieve an error lower than specified
+    test_spaces_until(rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10, maxerror:float=1.0,
+    n_iter:int=1e4) -> None
+        Resample the train/test and train the model boost hyperparameters configuration until achieve an error
+        lower than specified
+    test_all_until(rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10, maxerror:float=1.0, 
+    n_iter:int=1e4) -> None
+        Analyze the best performance between  test_random_states_until and test_spaces_until methods at once
     """
 
     def __init__(self, m_input:np=None, m_output:np=None, m_train_percentage:float=0.8):
@@ -237,7 +247,7 @@ class SklRegressorTest:
         self.m_output = m_output
         self.m_train_percentage = m_train_percentage
 
-    def set_desired_models(self, models:str="all") -> None:
+    def set_desired_models(self, models:Union[str, list]="all") -> None:
         """
         Set the Scikit-Learn model to be analyzed or all of the available models
 
@@ -247,15 +257,27 @@ class SklRegressorTest:
             Models to be evaluated. Pass the name of the Scikit-Learn implementation or "all" if you desire to run all
             implemented methdos
         """
-        if models == "all":
-            self.m_models = _MODELS
-            self.m_spaces = _SPACES
+        if type(models) == str:
+            if models == "all":
+                self.m_models = _MODELS
+                self.m_spaces = _SPACES
+            else:
+                try:
+                    self.m_models = {models: _MODELS[models]}
+                    self.m_spaces = {models: _SPACES[models]}
+                except:
+                    exit("Unexpected model: must be Scikit-Learn regression model name or all.")
+        elif type(models) == list:
+            self.m_models = dict()
+            self.m_spaces = dict()
+            for model in models:
+                try:
+                    self.m_models[model] = _MODELS[model]
+                    self.m_spaces[model] = _SPACES[model]
+                except:
+                    exit("Unexpected model: must be Scikit-Learn regression model name.")
         else:
-            try:
-                self.m_models = {models: _MODELS[models]}
-                self.m_spaces = {models: _SPACES[models]}
-            except:
-                exit("Unexpected model: must be Scikit-Learn regression model name or all.")
+            exit("Unexpected model type. Must be string or list.")
         self.initialize_parameters()
 
     def initialize_parameters(self) -> None:
@@ -417,3 +439,124 @@ class SklRegressorTest:
         else:
             df.to_excel(path + "/" + filename + ".xlsx", index=False)
         return df
+
+    def test_random_states_until(self, maxerror:float=1.0, n_iter:int=1e4) -> None:
+        """
+        Resample the train/test and train the model with default configuration until achieve an error lower than specified
+
+        Parameters
+        ----------
+        maxerror:float
+            Maximum absolute error alowed
+        n_iter:int
+            Maximum number of iterations
+        """
+        for key in self.m_models.keys():
+            random_state = 1
+            while random_state <= n_iter:
+                xtrain, xtest, ytrain, ytest = sklearn.model_selection.train_test_split(self.m_input,
+                                                                                    self.m_output,
+                                                                                    train_size=self.m_train_percentage,
+                                                                                    random_state=random_state)
+                model = self.m_best_model[key]
+                model.fit(xtrain, ytrain)
+                ypred = model.predict(xtest)
+
+                if self.m_max_absolute_error[key] > np.nanmax(np.absolute(ytest - ypred)):
+                    self.m_r2_score[key] = r2_score(ytest, ypred)
+                    self.m_max_absolute_error[key] = np.nanmax(np.absolute(ytest - ypred))
+                    self.m_max_error[key] = max_error(ytest, ypred)
+                    self.m_mean_absolute_error[key] = mean_absolute_error(ytest, ypred)
+                    self.m_mean_squared_error[key] = mean_squared_error(ytest, ypred)
+                    self.m_random_state[key] = random_state
+                    if self.m_max_absolute_error[key] <= maxerror:
+                        break
+                random_state += 1
+
+            print("Model: " + key +
+                  " | Iterations: " + str(random_state) +
+                  " | Max. Error: " + str(self.m_max_absolute_error[key]))
+
+    def test_spaces_until(self, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10,
+                                 maxerror:float=1.0, n_iter:int=1e4) -> None:
+        """
+        Resample the train/test and train the model boost hyperparameters configuration until achieve an error
+        lower than specified
+
+        Parameters
+        ----------
+        rkf_cv_n_splits : int
+            Number of splits of cross-validation
+        rkf_cv_n_repeats : int
+            Number of repeats of cross-validation
+        n_rand_iter : int
+            Number of samples of the grid of possible hyperparameters combinations
+        maxerror:float
+            Maximum absolute error alowed
+        n_iter:int
+            Maximum number of iterations
+        """
+        for key in self.m_models.keys():
+            random_state = 1
+            while random_state <= n_iter:
+                xtrain, xtest, ytrain, ytest = sklearn.model_selection.train_test_split(self.m_input,
+                                                                                    self.m_output,
+                                                                                    train_size=self.m_train_percentage,
+                                                                                    random_state=random_state)
+                model = self.m_models[key]
+                search_n_iter = check_max_n_iter(desired_n_iter=n_rand_iter,
+                                                 space=self.m_spaces[key])
+
+                cv = RepeatedKFold(n_splits=rkf_cv_n_splits, n_repeats=rkf_cv_n_repeats, random_state=random_state)
+                search = RandomizedSearchCV(estimator=model,
+                                            param_distributions=self.m_spaces[key],
+                                            cv=cv,
+                                            n_iter=search_n_iter,
+                                            random_state=random_state)
+                search.fit(xtrain, ytrain)
+
+                model = search.best_estimator_
+                model.fit(xtrain, ytrain)
+                ypred = model.predict(xtest)
+                if self.m_max_absolute_error[key] > np.nanmax(np.absolute(ytest - ypred)):
+                    self.m_r2_score[key] = r2_score(ytest, ypred)
+                    self.m_max_absolute_error[key] = np.nanmax(np.absolute(ytest - ypred))
+                    self.m_max_error[key] = max_error(ytest, ypred)
+                    self.m_mean_absolute_error[key] = mean_absolute_error(ytest, ypred)
+                    self.m_mean_squared_error[key] = mean_squared_error(ytest, ypred)
+                    self.m_random_state[key] = random_state
+                    self.m_best_model[key] = model
+                    self.m_best_params[key] = split_dict(search.best_params_)
+                    if self.m_max_absolute_error[key] <= maxerror:
+                        break
+                random_state += 1
+
+            print("Model: " + key +
+                  " | Iterations: " + str(random_state) +
+                  " | Max. Error: " + str(self.m_max_absolute_error[key]))
+    
+    def test_all_until(self, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10,maxerror:float=1.0, 
+                       n_iter:int=1e4) -> None:
+        """
+        Analyze the best performance between  test_random_states_until and test_spaces_until methods at once
+
+        Parameters
+        ----------
+        rkf_cv_n_splits : int
+            Number of splits of cross-validation
+        rkf_cv_n_repeats : int
+            Number of repeats of cross-validation
+        n_rand_iter : int
+            Number of samples of the grid of possible hyperparameters combinations
+        maxerror:float
+            Maximum absolute error alowed
+        n_iter:int
+            Maximum number of iterations
+        """
+        self.test_random_states_until(maxerror=maxerror,
+                                      n_iter=n_iter)
+        self.test_spaces_until(rkf_cv_n_splits=rkf_cv_n_splits,
+                               rkf_cv_n_repeats=rkf_cv_n_repeats,
+                               n_rand_iter=n_rand_iter,
+                               maxerror=maxerror,
+                               n_iter=n_iter)
