@@ -57,7 +57,7 @@ def read_data(filepath: str) -> tuple[pd, np, np]:
     original_data = df.to_numpy()
     original_input_data = original_data[:, :-1]
     input_data, x0_list, dx_list = doe_normalize(original_input_data)
-    output_data = np.reshape(original_data[:, -1], (-1, 1))
+    output_data = original_data[:, -1]
     return df, input_data, output_data
 
 
@@ -111,4 +111,3 @@ def split_dict(dictionary:dict) -> str:
     final_text += ": "
     final_text += str(values[-1])
     return final_text
-
