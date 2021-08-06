@@ -535,7 +535,7 @@ class SklRegressorTest:
                   " | Iterations: " + str(random_state) +
                   " | Max. Error: " + str(self.m_max_absolute_error[key]))
     
-    def test_all_until(self, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10,maxerror:float=1.0, 
+    def test_all_until(self, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10, maxerror:float=1.0, 
                        n_iter:int=1e4) -> None:
         """
         Analyze the best performance between  test_random_states_until and test_spaces_until methods at once
