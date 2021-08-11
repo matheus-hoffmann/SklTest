@@ -125,3 +125,50 @@ Write a summary file with the best configuration of hyperparameters and statisti
 summary_df = SklRegressors.write_log(path="",
                                      filename="skl_regressor_test_summary")
 ```
+
+Print the calculated methods and their respective R² and Maximum Absolute Error:
+
+```python
+SklRegressors.summary()
+```
+
+Your output will be similar to this:
+
+```python
+-----------------------------------------------------
+|             Model             |   R2    |  Error  |
+-----------------------------------------------------
+| XGBRegressor                  |   1.000 |    1.55 |
+| GradientBoostingRegressor     |   1.000 |    1.78 |
+| ExtraTreesRegressor           |   0.999 |    2.34 |
+| BaggingRegressor              |   0.999 |    2.44 |
+| ExtraTreeRegressor            |   0.999 |    2.70 |
+| RandomForestRegressor         |   0.999 |    2.79 |
+| DecisionTreeRegressor         |   0.999 |    3.21 |
+| AdaBoostRegressor             |   0.998 |    4.22 |
+| LassoCV                       |   0.990 |    7.04 |
+| OrthogonalMatchingPursuitCV   |   0.990 |    7.09 |
+| Ridge                         |   0.987 |    7.15 |
+| SGDRegressor                  |   0.990 |    7.31 |
+| HuberRegressor                |   0.990 |    7.37 |
+| RidgeCV                       |   0.990 |    7.38 |
+| BayesianRidge                 |   0.990 |    7.42 |
+| Lars                          |   0.990 |    7.44 |
+| LassoLarsCV                   |   0.990 |    7.44 |
+| LarsCV                        |   0.990 |    7.44 |
+| LinearRegression              |   0.990 |    7.44 |
+| RANSACRegressor               |   0.990 |    7.44 |
+| Lasso                         |   0.990 |    7.62 |
+| ElasticNetCV                  |   0.987 |    8.01 |
+| LassoLarsIC                   |   0.988 |    8.23 |
+| PassiveAggressiveRegressor    |   0.985 |    8.89 |
+| LassoLars                     |   0.965 |   15.64 |
+| OrthogonalMatchingPursuit     |   0.960 |   15.93 |
+| KNeighborsRegressor           |   0.944 |   18.44 |
+| LinearSVR                     |   0.886 |   25.86 |
+| ElasticNet                    |   0.821 |   30.82 |
+| SVR                           |   0.130 |   64.72 |
+| NuSVR                         |   0.097 |   70.43 |
+| DummyRegressor                |  -0.009 |   74.72 |
+-----------------------------------------------------
+```
