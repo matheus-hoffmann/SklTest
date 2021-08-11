@@ -55,6 +55,7 @@ setup(
     install_requires=[
         "numpy",
         "pandas",
+        "matplotlib",
         "xgboost",
         "scikit-learn",
         "openpyxl"
