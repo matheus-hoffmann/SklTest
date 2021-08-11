@@ -560,3 +560,17 @@ class SklRegressorTest:
                                n_rand_iter=n_rand_iter,
                                maxerror=maxerror,
                                n_iter=n_iter)
+    def summary(self):
+        """
+        Show the performance of the best model achieved for each method.
+        """
+        df = pd.DataFrame(data={"Model": list(self.m_max_absolute_error.keys()),
+                                "R2": list(self.m_r2_score.values()),
+                                "Error": list(self.m_max_absolute_error.values())})
+        df = df.sort_values(by="Error", ascending=True)
+        print("\n\n-----------------------------------------------------")
+        print("| {:^30}| {:^7} | {:^7} |".format(df.columns[0], df.columns[1], df.columns[2]))
+        print("-----------------------------------------------------")
+        for i in range(len(df)):
+            print("| {:30}| {:7.3f} | {:7.2f} |".format(df.values[i, 0], df.values[i, 1], df.values[i, 2]))
+        print("-----------------------------------------------------")
