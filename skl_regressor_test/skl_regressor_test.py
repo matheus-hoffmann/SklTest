@@ -1,6 +1,7 @@
 from typing import Union
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 import sklearn
 import sklearn.ensemble
 import sklearn.linear_model
@@ -8,7 +9,7 @@ import sklearn.svm
 import sklearn.tree
 import xgboost
 
-from sklearn.metrics import r2_score, max_error, mean_absolute_error, mean_squared_error
+from sklearn.metrics import r2_score, max_error, mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
 from sklearn.model_selection import train_test_split, RepeatedKFold, GridSearchCV, RandomizedSearchCV
 from skl_regressor_test.utils import *
 
@@ -196,14 +197,20 @@ class SklRegressorTest:
         Best combination of hyperparameters for each model
     m_r2_score : dict
         R2 score achieved by the model after boosting
-    m_max_absolute_error : dict
-        Minimum maximum absolute error achieved by the model after boosting
+    m_adj_r2_score : dict
+        Adjusted R2 score achieved by the model after boosting
     m_max_error : dict
         Maximum error achieved by the model after boosting
     m_mean_absolute_error : dict
         Mean absolute error achieved by the model after boosting
+    m_root_mean_absolute_error : dict
+        Root mean absolute error achieved by the model after boosting
     m_mean_squared_error : dict
         Maximum absolute error achieved by the model after boosting
+    m_root_mean_squared_error : dict
+        Root maximum absolute error achieved by the model after boosting
+    m_mean_absolute_percentage_error : dict
+        Mean absolute percentage error achieved by the model after boosting
     m_random_state : dict
         Best random state to split the train and test data
 
@@ -211,25 +218,35 @@ class SklRegressorTest:
     -------
     set_desired_models(models:str="all") -> None
         Set the Scikit-Learn model to be analyzed or all of the available models
+
     initialize_parameters() -> None
         Initialize attributes with the default values
+
     test_random_states(n_random_states:int=10) -> None
         Analyze the best random state to split the data and train with the default hyperparameters
+
     test_spaces(n_random_states:int=10, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10) -> None
         Boost hyperparameters through a k-fold cross-validation holdout
+
     test_all(n_random_states:int=10, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10) -> None
         Analyze the best performance between  test_random_states and test_spaces methods at once
+
     write_log(self, path:str="", filename:str="skl_regressor_test_summary") -> pd
         Save a summary file with the best hyperparameters configuration and statistical data from the models
     test_random_states_until(maxerror:float=1.0, n_iter:int=1e4) -> None
         Resample the train/test and train the model with default configuration until achieve an error lower than specified
+
     test_spaces_until(rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10, maxerror:float=1.0,
     n_iter:int=1e4) -> None
         Resample the train/test and train the model boost hyperparameters configuration until achieve an error
         lower than specified
-    test_all_until(rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10, maxerror:float=1.0, 
+
+    test_all_until(rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10, maxerror:float=1.0,
     n_iter:int=1e4) -> None
         Analyze the best performance between  test_random_states_until and test_spaces_until methods at once
+
+    summary() -> None
+        Print performance data of the the best configuration achieved
     """
 
     def __init__(self, m_input:np=None, m_output:np=None, m_train_percentage:float=0.8):
@@ -287,18 +304,24 @@ class SklRegressorTest:
         self.m_best_model = self.m_models.copy()
         self.m_best_params = self.m_models.copy()
         self.m_r2_score = self.m_models.copy()
-        self.m_max_absolute_error = self.m_models.copy()
+        self.m_adj_r2_score = self.m_models.copy()
         self.m_max_error = self.m_models.copy()
         self.m_mean_absolute_error = self.m_models.copy()
+        self.m_root_mean_absolute_error = self.m_models.copy()
         self.m_mean_squared_error = self.m_models.copy()
+        self.m_root_mean_squared_error = self.m_models.copy()
+        self.m_mean_absolute_percentage_error = self.m_models.copy()
         self.m_random_state = self.m_models.copy()
         for key in self.m_models:
             self.m_best_params[key] = "default"
             self.m_r2_score[key] = 1e10
-            self.m_max_absolute_error[key] = 1e10
+            self.m_adj_r2_score[key] = 1e10
             self.m_max_error[key] = 1e10
             self.m_mean_absolute_error[key] = 1e10
+            self.m_root_mean_absolute_error[key] = 1e10
             self.m_mean_squared_error[key] = 1e10
+            self.m_root_mean_squared_error[key] = 1e10
+            self.m_mean_absolute_percentage_error[key] = 1e10
             self.m_random_state[key] = 1e10
 
     def test_random_states(self, n_random_states:int=10) -> None:
@@ -323,12 +346,15 @@ class SklRegressorTest:
                 model = self.m_models[key]
                 model.fit(xtrain, ytrain)
                 ypred = model.predict(xtest)
-                if self.m_max_absolute_error[key] > np.nanmax(np.absolute(ytest - ypred)):
+                if self.m_max_error[key] > max_error(ytest, ypred):
                     self.m_r2_score[key] = r2_score(ytest, ypred)
-                    self.m_max_absolute_error[key] = np.nanmax(np.absolute(ytest - ypred))
+                    self.m_adj_r2_score[key] = adjusted_r2_score(self.m_r2_score[key], xtest)
                     self.m_max_error[key] = max_error(ytest, ypred)
                     self.m_mean_absolute_error[key] = mean_absolute_error(ytest, ypred)
+                    self.m_root_mean_absolute_error[key] = pow(self.m_mean_absolute_error[key], 0.5)
                     self.m_mean_squared_error[key] = mean_squared_error(ytest, ypred)
+                    self.m_root_mean_squared_error[key] = pow(self.m_mean_squared_error[key], 0.5)
+                    self.m_mean_absolute_percentage_error[key] = mean_absolute_percentage_error(ytest, ypred)
                     self.m_random_state[key] = random_state
 
         print("Random state default analysis finished")
@@ -374,17 +400,20 @@ class SklRegressorTest:
                 model = search.best_estimator_
                 model.fit(xtrain, ytrain)
                 ypred = model.predict(xtest)
-                if self.m_max_absolute_error[key] > np.nanmax(np.absolute(ytest - ypred)):
+                if self.m_max_error[key] > max_error(ytest, ypred):
                     self.m_r2_score[key] = r2_score(ytest, ypred)
-                    self.m_max_absolute_error[key] = np.nanmax(np.absolute(ytest - ypred))
+                    self.m_adj_r2_score[key] = adjusted_r2_score(self.m_r2_score[key], xtest)
                     self.m_max_error[key] = max_error(ytest, ypred)
                     self.m_mean_absolute_error[key] = mean_absolute_error(ytest, ypred)
+                    self.m_root_mean_absolute_error[key] = pow(self.m_mean_absolute_error[key], 0.5)
                     self.m_mean_squared_error[key] = mean_squared_error(ytest, ypred)
+                    self.m_root_mean_squared_error[key] = pow(self.m_mean_squared_error[key], 0.5)
+                    self.m_mean_absolute_percentage_error[key] = mean_absolute_percentage_error(ytest, ypred)
                     self.m_random_state[key] = random_state
                     self.m_best_model[key] = model
                     self.m_best_params[key] = split_dict(search.best_params_)
 
-        print("Random state default analysis finished")
+        print("K-fold cross-validation holdout analysis finished")
 
     def test_all(self, n_random_states:int=10, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10) -> None:
         """
@@ -428,10 +457,13 @@ class SklRegressorTest:
         df["Random State"] = np.array(list(self.m_random_state.values()))
         df["Best Parameters"] = np.array(list(self.m_best_params.values()))
         df["R2 score"] = np.array(list(self.m_r2_score.values()))
-        df["Max. Absolute Error"] = np.array(list(self.m_max_absolute_error.values()))
+        df["Adj. R2 score"] = np.array(list(self.m_adj_r2_score.values()))
         df["Max. Error"] = np.array(list(self.m_max_error.values()))
         df["Mean Absolute Error"] = np.array(list(self.m_mean_absolute_error.values()))
+        df["Root Mean Absolute Error"] = np.array(list(self.m_root_mean_absolute_error.values()))
         df["Mean Squared Error"] = np.array(list(self.m_mean_squared_error.values()))
+        df["Root Mean Squared Error"] = np.array(list(self.m_root_mean_squared_error.values()))
+        df["Mean Absolute Percentage Error"] = np.array(list(self.m_mean_absolute_percentage_error.values()))
 
         df = df.sort_values(by="Model")
         if path == "" or path[-1] == "/":
@@ -462,20 +494,23 @@ class SklRegressorTest:
                 model.fit(xtrain, ytrain)
                 ypred = model.predict(xtest)
 
-                if self.m_max_absolute_error[key] > np.nanmax(np.absolute(ytest - ypred)):
+                if self.m_max_error[key] > max_error(ytest, ypred):
                     self.m_r2_score[key] = r2_score(ytest, ypred)
-                    self.m_max_absolute_error[key] = np.nanmax(np.absolute(ytest - ypred))
+                    self.m_adj_r2_score[key] = adjusted_r2_score(self.m_r2_score[key], xtest)
                     self.m_max_error[key] = max_error(ytest, ypred)
                     self.m_mean_absolute_error[key] = mean_absolute_error(ytest, ypred)
+                    self.m_root_mean_absolute_error[key] = pow(self.m_mean_absolute_error[key], 0.5)
                     self.m_mean_squared_error[key] = mean_squared_error(ytest, ypred)
+                    self.m_root_mean_squared_error[key] = pow(self.m_mean_squared_error[key], 0.5)
+                    self.m_mean_absolute_percentage_error[key] = mean_absolute_percentage_error(ytest, ypred)
                     self.m_random_state[key] = random_state
-                    if self.m_max_absolute_error[key] <= maxerror:
+                    if self.m_max_error[key] <= maxerror:
                         break
                 random_state += 1
 
             print("Model: " + key +
                   " | Iterations: " + str(random_state) +
-                  " | Max. Error: " + str(self.m_max_absolute_error[key]))
+                  " | Max. Error: " + str(self.m_max_error[key]))
 
     def test_spaces_until(self, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10,
                                  maxerror:float=1.0, n_iter:int=1e4) -> None:
@@ -518,12 +553,15 @@ class SklRegressorTest:
                 model = search.best_estimator_
                 model.fit(xtrain, ytrain)
                 ypred = model.predict(xtest)
-                if self.m_max_absolute_error[key] > np.nanmax(np.absolute(ytest - ypred)):
+                if self.m_max_error[key] > max_error(ytest, ypred):
                     self.m_r2_score[key] = r2_score(ytest, ypred)
-                    self.m_max_absolute_error[key] = np.nanmax(np.absolute(ytest - ypred))
+                    self.m_adj_r2_score[key] = adjusted_r2_score(self.m_r2_score[key], xtest)
                     self.m_max_error[key] = max_error(ytest, ypred)
                     self.m_mean_absolute_error[key] = mean_absolute_error(ytest, ypred)
+                    self.m_root_mean_absolute_error[key] = pow(self.m_mean_absolute_error[key], 0.5)
                     self.m_mean_squared_error[key] = mean_squared_error(ytest, ypred)
+                    self.m_root_mean_squared_error[key] = pow(self.m_mean_squared_error[key], 0.5)
+                    self.m_mean_absolute_percentage_error[key] = mean_absolute_percentage_error(ytest, ypred)
                     self.m_random_state[key] = random_state
                     self.m_best_model[key] = model
                     self.m_best_params[key] = split_dict(search.best_params_)
@@ -533,7 +571,7 @@ class SklRegressorTest:
 
             print("Model: " + key +
                   " | Iterations: " + str(random_state) +
-                  " | Max. Error: " + str(self.m_max_absolute_error[key]))
+                  " | Max. Error: " + str(self.m_max_error[key]))
     
     def test_all_until(self, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10, maxerror:float=1.0, 
                        n_iter:int=1e4) -> None:
@@ -560,17 +598,40 @@ class SklRegressorTest:
                                n_rand_iter=n_rand_iter,
                                maxerror=maxerror,
                                n_iter=n_iter)
-    def summary(self):
+
+    def summary(self) -> None:
         """
         Show the performance of the best model achieved for each method.
         """
-        df = pd.DataFrame(data={"Model": list(self.m_max_absolute_error.keys()),
-                                "R2": list(self.m_r2_score.values()),
-                                "Error": list(self.m_max_absolute_error.values())})
-        df = df.sort_values(by="Error", ascending=True)
-        print("\n\n-----------------------------------------------------")
-        print("| {:^30}| {:^7} | {:^7} |".format(df.columns[0], df.columns[1], df.columns[2]))
-        print("-----------------------------------------------------")
+        df = pd.DataFrame()
+        df["Model"] = self.m_models.keys()
+        df["Max. Error"] = np.array(list(self.m_max_error.values()))
+        df["R2"] = np.array(list(self.m_r2_score.values()))
+        df["Adj. R2"] = np.array(list(self.m_adj_r2_score.values()))
+        df["MAE"] = np.array(list(self.m_mean_absolute_error.values()))
+        df["RMAE"] = np.array(list(self.m_root_mean_absolute_error.values()))
+        df["MSE"] = np.array(list(self.m_mean_squared_error.values()))
+        df["RMSE"] = np.array(list(self.m_root_mean_squared_error.values()))
+        df["MAPE"] = np.array(list(self.m_mean_absolute_percentage_error.values()))
+        df = df.sort_values(by="Max. Error", ascending=True)
+
+        print("\n\n----------------------------------------------------------------------------------------------"
+              "-----------------------")
+        print("| {:^30} | {:^10} | {:^7} | {:^7} | {:^7} | {:^7} | {:^7} | {:^7} | {:^7} |".format(df.columns[0],
+                                                                                                   df.columns[1],
+                                                                                                   df.columns[2],
+                                                                                                   df.columns[3],
+                                                                                                   df.columns[4],
+                                                                                                   df.columns[5],
+                                                                                                   df.columns[6],
+                                                                                                   df.columns[7],
+                                                                                                   df.columns[8]))
+        print("--------------------------------------------------------------------------------------------------"
+              "-------------------")
         for i in range(len(df)):
-            print("| {:30}| {:7.3f} | {:7.2f} |".format(df.values[i, 0], df.values[i, 1], df.values[i, 2]))
-        print("-----------------------------------------------------")
+            print("| {:30} | {:10.3f} | {:7.2f} | {:7.2f} | {:7.2f} | {:7.2f} | {:7.2f} | {:7.2f} |"
+                  " {:7.2f} |".format(df.values[i, 0], df.values[i, 1], df.values[i, 2],
+                                      df.values[i, 3], df.values[i, 4], df.values[i, 5],
+                                      df.values[i, 6], df.values[i, 7], df.values[i, 8]))
+        print("---------------------------------------------------------------------------------------------------"
+              "------------------")
