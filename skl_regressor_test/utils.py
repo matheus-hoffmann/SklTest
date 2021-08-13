@@ -111,3 +111,30 @@ def split_dict(dictionary:dict) -> str:
     final_text += ": "
     final_text += str(values[-1])
     return final_text
+
+
+def adjusted_r2_score(r2:float, x:np) -> float:
+    """
+    Compute the adjusted R² score
+
+    Parameters
+    ----------
+    r2 : float
+        Data R² previously computed
+    x : np
+        Input data array
+
+    Return
+    ------
+    r2a : float
+        Adjusted R²
+    """
+    n = x.shape[0]
+    p = x.shape[1]
+    den = (n - p - 1)
+    if den == 0:
+        den += 1e-6
+    r2a = 1 - (1 - r2) * (n - 1) / den
+    if r2a > 1:
+        r2a = 1.0
+    return r2a
