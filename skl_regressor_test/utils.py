@@ -138,3 +138,28 @@ def adjusted_r2_score(r2:float, x:np) -> float:
     if r2a > 1:
         r2a = 1.0
     return r2a
+
+
+def check_metric(all_metrics:dict, desired_metric:str, std_metric:str) -> str:
+    """
+    Check if a metric is available in a dict
+
+    Parameters
+    ----------
+    all_metrics : dict
+        Dictionary with the available metrics as keys
+    desired_metric : str
+        The metric that the user want to use
+    std_metric : str
+        A standard metric that is going to be used if the desired_metric is not available
+
+    Return
+    ------
+    metric : str
+        The metric to be used
+    """
+    available_metrics = list(all_metrics.keys())
+    metric = std_metric
+    if desired_metric in available_metrics:
+        metric = desired_metric
+    return metric
