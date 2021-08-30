@@ -171,6 +171,10 @@ _SPACES = {"SVR": {'kernel': ['linear', 'rbf', 'sigmoid'],
                             "fit_intercept": [True, False],
                             "normalize": [True, False]}
               }
+_METRICS = {"max_error": lambda true, pred: max_error(true, pred),
+            "mean_absolute_error": lambda true, pred: mean_absolute_error(true, pred),
+            "root_mean_squared_error": lambda true, pred: mean_squared_error(true, pred)**0.5,
+            "mean_absolute_percentage_error": lambda true, pred: mean_absolute_percentage_error(true, pred)}
 
 
 class SklRegressorTest:
@@ -222,27 +226,30 @@ class SklRegressorTest:
     initialize_parameters() -> None
         Initialize attributes with the default values
 
-    test_random_states(n_random_states:int=10) -> None
+    test_random_states(n_random_states:int=10, desired_metric:str="max_error") -> None
         Analyze the best random state to split the data and train with the default hyperparameters
 
-    test_spaces(n_random_states:int=10, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10) -> None
+    test_spaces(n_random_states:int=10, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10,
+     desired_metric:str="max_error") -> None
         Boost hyperparameters through a k-fold cross-validation holdout
 
-    test_all(n_random_states:int=10, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10) -> None
+    test_all(n_random_states:int=10, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10,
+     desired_metric:str="max_error") -> None
         Analyze the best performance between  test_random_states and test_spaces methods at once
 
     write_log(self, path:str="", filename:str="skl_regressor_test_summary") -> pd
         Save a summary file with the best hyperparameters configuration and statistical data from the models
-    test_random_states_until(maxerror:float=1.0, n_iter:int=1e4) -> None
+    
+    test_random_states_until(maxerror:float=1.0, n_iter:int=1e4, desired_metric:str="max_error") -> None
         Resample the train/test and train the model with default configuration until achieve an error lower than specified
 
     test_spaces_until(rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10, maxerror:float=1.0,
-    n_iter:int=1e4) -> None
+    n_iter:int=1e4, desired_metric:str="max_error") -> None
         Resample the train/test and train the model boost hyperparameters configuration until achieve an error
         lower than specified
 
     test_all_until(rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10, maxerror:float=1.0,
-    n_iter:int=1e4) -> None
+    n_iter:int=1e4, desired_metric:str="max_error") -> None
         Analyze the best performance between  test_random_states_until and test_spaces_until methods at once
 
     summary() -> None
@@ -324,7 +331,7 @@ class SklRegressorTest:
             self.m_mean_absolute_percentage_error[key] = 1e10
             self.m_random_state[key] = 1e10
 
-    def test_random_states(self, n_random_states:int=10) -> None:
+    def test_random_states(self, n_random_states:int=10, desired_metric:str="max_error") -> None:
         """
         Analyze the best random state to split the data and train with the default hyperparameters
 
@@ -332,7 +339,12 @@ class SklRegressorTest:
         ----------
         n_random_states : int
             Number of random states to evaluate the dafault model
+        desired_metric : str
+            Metric to be minimized -> ["max_error", "mean_absolute_error", "root_mean_squared_error", "mean_absolute_percentage_error"]
         """
+        desired_metric = check_metric(all_metrics=_METRICS,
+                                      desired_metric=desired_metric,
+                                      std_metric="max_error")
         random_state_interval = [int(i) for i in range(1, n_random_states+1, 1)]
 
         print("Testing random states")
@@ -346,7 +358,13 @@ class SklRegressorTest:
                 model = self.m_models[key]
                 model.fit(xtrain, ytrain)
                 ypred = model.predict(xtest)
-                if self.m_max_error[key] > max_error(ytest, ypred):
+
+                metrics = {"max_error": self.m_max_error[key],
+                           "mean_absolute_error": self.m_mean_absolute_error[key],
+                           "root_mean_squared_error": self.m_root_mean_squared_error[key],
+                           "mean_absolute_percentage_error": self.m_mean_absolute_percentage_error[key]}
+
+                if metrics[desired_metric] > _METRICS[desired_metric](ytest, ypred):
                     self.m_r2_score[key] = r2_score(ytest, ypred)
                     self.m_adj_r2_score[key] = adjusted_r2_score(self.m_r2_score[key], xtest)
                     self.m_max_error[key] = max_error(ytest, ypred)
@@ -359,7 +377,8 @@ class SklRegressorTest:
 
         print("Random state default analysis finished")
 
-    def test_spaces(self, n_random_states:int=10, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10) -> None:
+    def test_spaces(self, n_random_states:int=10, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10,
+                        desired_metric:str="max_error") -> None:
         """
         Boost hyperparameters through a k-fold cross-validation holdout
 
@@ -373,7 +392,12 @@ class SklRegressorTest:
             Number of repeats of cross-validation
         n_rand_iter : int
             Number of samples of the grid of possible hyperparameters combinations
+        desired_metric : str
+            Metric to be minimized -> ["max_error", "mean_absolute_error", "root_mean_squared_error", "mean_absolute_percentage_error"]
         """
+        desired_metric = check_metric(all_metrics=_METRICS,
+                                      desired_metric=desired_metric,
+                                      std_metric="max_error")
         random_state_interval = [int(i) for i in range(1, n_random_states + 1, 1)]
 
         print("Testing spaces")
@@ -400,7 +424,13 @@ class SklRegressorTest:
                 model = search.best_estimator_
                 model.fit(xtrain, ytrain)
                 ypred = model.predict(xtest)
-                if self.m_max_error[key] > max_error(ytest, ypred):
+
+                metrics = {"max_error": self.m_max_error[key],
+                           "mean_absolute_error": self.m_mean_absolute_error[key],
+                           "root_mean_squared_error": self.m_root_mean_squared_error[key],
+                           "mean_absolute_percentage_error": self.m_mean_absolute_percentage_error[key]}
+
+                if metrics[desired_metric] > _METRICS[desired_metric](ytest, ypred):
                     self.m_r2_score[key] = r2_score(ytest, ypred)
                     self.m_adj_r2_score[key] = adjusted_r2_score(self.m_r2_score[key], xtest)
                     self.m_max_error[key] = max_error(ytest, ypred)
@@ -415,7 +445,8 @@ class SklRegressorTest:
 
         print("K-fold cross-validation holdout analysis finished")
 
-    def test_all(self, n_random_states:int=10, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10) -> None:
+    def test_all(self, n_random_states:int=10, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10,
+                 desired_metric:str="max_error") -> None:
         """
         Analyze the best performance between  test_random_states and test_spaces methods at once
 
@@ -429,12 +460,16 @@ class SklRegressorTest:
             Number of repeats of cross-validation
         n_rand_iter : int
             Number of samples of the grid of possible hyperparameters combinations
+        desired_metric : str
+            Metric to be minimized -> ["max_error", "mean_absolute_error", "root_mean_squared_error", "mean_absolute_percentage_error"]
         """
-        self.test_random_states(n_random_states=n_random_states)
+        self.test_random_states(n_random_states=n_random_states,
+                                desired_metric=desired_metric)
         self.test_spaces(n_random_states=n_random_states,
                          rkf_cv_n_splits=rkf_cv_n_splits,
                          rkf_cv_n_repeats=rkf_cv_n_repeats,
-                         n_rand_iter=n_rand_iter)
+                         n_rand_iter=n_rand_iter,
+                         desired_metric=desired_metric)
 
     def write_log(self, path:str="", filename:str="skl_regressor_test_summary") -> pd:
         """
@@ -472,7 +507,7 @@ class SklRegressorTest:
             df.to_excel(path + "/" + filename + ".xlsx", index=False)
         return df
 
-    def test_random_states_until(self, maxerror:float=1.0, n_iter:int=1e4) -> None:
+    def test_random_states_until(self, maxerror:float=1.0, n_iter:int=1e4, desired_metric:str="max_error") -> None:
         """
         Resample the train/test and train the model with default configuration until achieve an error lower than specified
 
@@ -482,7 +517,12 @@ class SklRegressorTest:
             Maximum absolute error alowed
         n_iter:int
             Maximum number of iterations
+        desired_metric : str
+            Metric to be minimized -> ["max_error", "mean_absolute_error", "root_mean_squared_error", "mean_absolute_percentage_error"]
         """
+        desired_metric = check_metric(all_metrics=_METRICS,
+                                      desired_metric=desired_metric,
+                                      std_metric="max_error")
         for key in self.m_models.keys():
             random_state = 1
             while random_state <= n_iter:
@@ -494,7 +534,12 @@ class SklRegressorTest:
                 model.fit(xtrain, ytrain)
                 ypred = model.predict(xtest)
 
-                if self.m_max_error[key] > max_error(ytest, ypred):
+                metrics = {"max_error": self.m_max_error[key],
+                           "mean_absolute_error": self.m_mean_absolute_error[key],
+                           "root_mean_squared_error": self.m_root_mean_squared_error[key],
+                           "mean_absolute_percentage_error": self.m_mean_absolute_percentage_error[key]}
+
+                if metrics[desired_metric] > _METRICS[desired_metric](ytest, ypred):
                     self.m_r2_score[key] = r2_score(ytest, ypred)
                     self.m_adj_r2_score[key] = adjusted_r2_score(self.m_r2_score[key], xtest)
                     self.m_max_error[key] = max_error(ytest, ypred)
@@ -513,7 +558,7 @@ class SklRegressorTest:
                   " | Max. Error: " + str(self.m_max_error[key]))
 
     def test_spaces_until(self, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10,
-                                 maxerror:float=1.0, n_iter:int=1e4) -> None:
+                                 maxerror:float=1.0, n_iter:int=1e4, desired_metric:str="max_error") -> None:
         """
         Resample the train/test and train the model boost hyperparameters configuration until achieve an error
         lower than specified
@@ -530,7 +575,12 @@ class SklRegressorTest:
             Maximum absolute error alowed
         n_iter:int
             Maximum number of iterations
+        desired_metric : str
+            Metric to be minimized -> ["max_error", "mean_absolute_error", "root_mean_squared_error", "mean_absolute_percentage_error"]
         """
+        desired_metric = check_metric(all_metrics=_METRICS,
+                                      desired_metric=desired_metric,
+                                      std_metric="max_error")
         for key in self.m_models.keys():
             random_state = 1
             while random_state <= n_iter:
@@ -553,7 +603,13 @@ class SklRegressorTest:
                 model = search.best_estimator_
                 model.fit(xtrain, ytrain)
                 ypred = model.predict(xtest)
-                if self.m_max_error[key] > max_error(ytest, ypred):
+
+                metrics = {"max_error": self.m_max_error[key],
+                           "mean_absolute_error": self.m_mean_absolute_error[key],
+                           "root_mean_squared_error": self.m_root_mean_squared_error[key],
+                           "mean_absolute_percentage_error": self.m_mean_absolute_percentage_error[key]}
+
+                if metrics[desired_metric] > _METRICS[desired_metric](ytest, ypred):
                     self.m_r2_score[key] = r2_score(ytest, ypred)
                     self.m_adj_r2_score[key] = adjusted_r2_score(self.m_r2_score[key], xtest)
                     self.m_max_error[key] = max_error(ytest, ypred)
@@ -565,7 +621,7 @@ class SklRegressorTest:
                     self.m_random_state[key] = random_state
                     self.m_best_model[key] = model
                     self.m_best_params[key] = split_dict(search.best_params_)
-                    if self.m_max_absolute_error[key] <= maxerror:
+                    if self.m_max_error[key] <= maxerror:
                         break
                 random_state += 1
 
@@ -574,7 +630,7 @@ class SklRegressorTest:
                   " | Max. Error: " + str(self.m_max_error[key]))
     
     def test_all_until(self, rkf_cv_n_splits:int=5, rkf_cv_n_repeats:int=10, n_rand_iter:int=10, maxerror:float=1.0, 
-                       n_iter:int=1e4) -> None:
+                       n_iter:int=1e4, desired_metric:str="max_error") -> None:
         """
         Analyze the best performance between  test_random_states_until and test_spaces_until methods at once
 
@@ -590,14 +646,18 @@ class SklRegressorTest:
             Maximum absolute error alowed
         n_iter:int
             Maximum number of iterations
+        desired_metric : str
+            Metric to be minimized -> ["max_error", "mean_absolute_error", "root_mean_squared_error", "mean_absolute_percentage_error"]
         """
         self.test_random_states_until(maxerror=maxerror,
-                                      n_iter=n_iter)
+                                      n_iter=n_iter,
+                                      desired_metric=desired_metric)
         self.test_spaces_until(rkf_cv_n_splits=rkf_cv_n_splits,
                                rkf_cv_n_repeats=rkf_cv_n_repeats,
                                n_rand_iter=n_rand_iter,
                                maxerror=maxerror,
-                               n_iter=n_iter)
+                               n_iter=n_iter,
+                               desired_metric=desired_metric)
 
     def summary(self) -> None:
         """
