@@ -64,7 +64,8 @@ SklRegressors.set_desired_models(models="all")
 Get the best `random_state` for each model in a given interval:
 
 ```python
-SklRegressors.test_random_states(n_random_states=10)
+SklRegressors.test_random_states(n_random_states=10,
+                                 desired_metric="root_mean_squared_error")
 ```
 
 Clear the results in order to try to perform another method:
@@ -79,7 +80,8 @@ Get the best combination of hyperparameters through a k-fold cross-validation ho
 SklRegressors.test_spaces(n_random_states=10,
                           rkf_cv_n_splits=5,
                           rkf_cv_n_repeats=10,
-                          n_rand_iter=20)
+                          n_rand_iter=20,
+                          desired_metric="root_mean_squared_error")
 ```
 
 Get the best model configuration after try the two method above:
@@ -88,14 +90,16 @@ Get the best model configuration after try the two method above:
 SklRegressors.test_all(n_random_states=10,
                        rkf_cv_n_splits=5,
                        rkf_cv_n_repeats=10,
-                       n_rand_iter=20)
+                       n_rand_iter=20,
+                       desired_metric="root_mean_squared_error")
 ```
 
 Try to achieve a maximum absolute error (`maxerror`) lower than an estimated value before a given number of iterations `n_iter` just resampling the train/test data:
 
 ```python
 SklRegressors.test_random_states_until(maxerror=1.0,
-                                       n_iter=1000)
+                                       n_iter=1000,
+                                       desired_metric="root_mean_squared_error")
 ```
 
 
@@ -106,7 +110,8 @@ SklRegressors.test_spaces_until(rkf_cv_n_splits=5,
                                 rkf_cv_n_repeats=10,
                                 n_rand_iter=20,
                                 maxerror=1.0,
-                                n_iter=100)
+                                n_iter=100,
+                                desired_metric="root_mean_squared_error")
 ```
 
 Get the best model configuration after try the two method above:
@@ -116,7 +121,8 @@ SklRegressors.test_all_until(rkf_cv_n_splits=5,
                              rkf_cv_n_repeats=10,
                              n_rand_iter=20,
                              maxerror=1.0,
-                             n_iter=100)
+                             n_iter=100,
+                             desired_metric="root_mean_squared_error")
 ```
 
 Write a summary file with the best configuration of hyperparameters and statistical data from this best model:
