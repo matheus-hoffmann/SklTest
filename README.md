@@ -1,4 +1,6 @@
 # Skl Regressor Test
+Python library to compare more than 30 regression models available in Scikit-learn at once. It is possible to evaluate the influence of successive resampling and optimize the hyperparameters through K-fold cross-validation holdout.
+
 ## Instalation
 This installation tutorial will guide you through running a local application using the conda environment and the PyCharm as IDE. First, download the full ![repository](https://github.com/matheus-hoffmann/skl_regressor_test) as a ZIP file and extract to a folder named **skl_regressor_test**.
 
