@@ -24,7 +24,7 @@ def version(path):
     raise RuntimeError("Unable to find version string.")
 
 
-DESCRIPTION = "skl_regressor_test"
+DESCRIPTION = "skl_test"
 VERSION = version("skl_regressor_test/__init__.py")
 
 # The rest you shouldn't have to touch too much :)
@@ -44,13 +44,13 @@ except FileNotFoundError:
 
 
 setup(
-    name="skl_regressor_test",
+    name="skl_test",
     version=VERSION,
     description=DESCRIPTION,
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Matheus Hoffmann",
-    author_email="mhoffmann@tecgraf.puc-rio.br",
+    author_email="mmatheushb@hotmail.com",
     packages=find_packages(exclude=("tests",)),
     install_requires=[
         "numpy",
