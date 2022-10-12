@@ -73,3 +73,6 @@ summary_df = SklRegressors.write_log(path="",
 
 # Print all methods and metrics
 SklRegressors.summary()
+
+# Save trained models
+SklRegressors.save_models(path="models/")

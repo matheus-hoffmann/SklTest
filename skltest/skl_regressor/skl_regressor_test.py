@@ -1,6 +1,7 @@
 from typing import Union
 import pandas as pd
 import numpy as np
+import pickle
 import sklearn
 import sklearn.ensemble
 import sklearn.linear_model
@@ -92,6 +93,9 @@ class SklRegressorTest:
 
     summary() -> None
         Print performance data of the the best configuration achieved
+
+    save_models(path:str="")
+        Save the final model
     """
 
     def __init__(self, m_input: np = None, m_output: np = None, m_train_percentage: float = 0.8):
@@ -169,7 +173,8 @@ class SklRegressorTest:
             self.m_mean_absolute_percentage_error[key] = 1e10
             self.m_random_state[key] = 1e10
 
-    def test_random_states(self, n_random_states: int = 10, desired_metric: str = "max_error", verbose: bool = False) -> None:
+    def test_random_states(self, n_random_states: int = 10, desired_metric: str = "max_error",
+                           verbose: bool = False) -> None:
         """
         Analyze the best random state to split the data and train with the default hyperparameters
 
@@ -416,7 +421,8 @@ class SklRegressorTest:
         print("Random state default analysis until {} iterations finished".format(n_iter))
 
     def test_spaces_until(self, rkf_cv_n_splits: int = 5, rkf_cv_n_repeats: int = 10, n_rand_iter: int = 10,
-                          maxerror: float = 1.0, n_iter: int = 1e4, desired_metric: str = "max_error", verbose: bool = False) -> None:
+                          maxerror: float = 1.0, n_iter: int = 1e4, desired_metric: str = "max_error",
+                          verbose: bool = False) -> None:
         """
         Resample the train/test and train the model boost hyperparameters configuration until achieve an error
         lower than specified
@@ -566,3 +572,20 @@ class SklRegressorTest:
                                       df.values[i, 6], df.values[i, 7], df.values[i, 8]))
         print("---------------------------------------------------------------------------------------------------"
               "------------------")
+
+    def save_models(self, path: str = "") -> None:
+        """
+        Save the final model
+
+        Parameters
+        ----------
+        path : str
+            Path to the file. It is assumed that it will be saved in the current directory.
+        """
+        if path == "" or path[-1] == "/":
+            _path = path
+        else:
+            _path = path + "/"
+        for key in self.m_models.keys():
+            pickle.dump(self.m_best_model[key],
+                        open("{}model_{}.pkl".format(_path, key), 'wb'))
